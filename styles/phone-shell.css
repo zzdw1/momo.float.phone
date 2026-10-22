@@ -1,5 +1,19 @@
 /* ── Phone shell ── */
 
+:root {
+  --phone-screen-width: clamp(320px, 100vw, 390px);
+  --phone-screen-height: clamp(640px, 100dvh, 844px);
+  --phone-screen-radius: 44px;
+  --phone-frame-size: 4px;
+  --phone-case-padding: 3px;
+  --phone-case-border-size: 1px;
+  --phone-case-radius: 48px;
+  --phone-frame-radius: 46px;
+  --home-grid-top-offset: 48px;
+  --home-row-gap-y: 12px;
+  --home-grid-bottom-trim: 12px;
+}
+
 .phone-shell-wrap {
   --phone-total-width: calc(var(--phone-screen-width) + (2 * (var(--phone-frame-size) + var(--phone-case-padding) + var(--phone-case-border-size))));
   display: grid;
@@ -1457,4 +1471,79 @@
 }
 .folder-dots .dot.active {
   background: color-mix(in srgb, var(--c-home-label, #ffffff) 85%, transparent);
+}
+
+/* ══════════════════════════════════════════════════════════
+   窄屏 / Android WebView 独立视口适配 (≤ 480px)
+   ══════════════════════════════════════════════════════════ */
+@media screen and (max-width: 480px) {
+  :root {
+    --phone-screen-width: 100vw;
+    --phone-screen-height: 100dvh;
+    --phone-screen-radius: 0px;
+    --phone-frame-size: 0px;
+    --phone-case-padding: 0px;
+    --phone-case-border-size: 0px;
+    --phone-case-radius: 0px;
+    --phone-frame-radius: 0px;
+  }
+
+  .phone-shell-wrap {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    min-height: 100dvh;
+    height: 100dvh;
+    gap: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden;
+  }
+
+  .phone-case {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  .phone-case::before,
+  .phone-case::after,
+  .phone-frame::before,
+  .phone-frame::after {
+    display: none !important;
+  }
+
+  .phone-frame {
+    width: 100vw !important;
+    height: 100dvh !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .phone-shell {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    padding: 0 10px !important;
+  }
+
+  .phone-workspace {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+  }
+
+  .phone-status-bar {
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
 }
