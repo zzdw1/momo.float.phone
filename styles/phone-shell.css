@@ -1534,16 +1534,31 @@
     max-height: 100dvh !important;
     border-radius: 0 !important;
     padding: 0 10px !important;
+    overflow: hidden !important;
   }
 
   .phone-workspace {
     flex: 1 1 auto;
     width: 100%;
     min-height: 0;
+    overflow: hidden !important;
   }
 
   .phone-status-bar {
     padding-left: max(16px, env(safe-area-inset-left));
     padding-right: max(16px, env(safe-area-inset-right));
+  }
+
+  .dock {
+    margin-top: 2px !important;
+    min-height: 72px !important;
+    --home-dock-lift: 6px;
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+  }
+
+  .icon-grid {
+    grid-template-rows: repeat(6, minmax(0, 1fr)) !important;
+    row-gap: 6px !important;
+    margin-top: 0 !important;
   }
 }
