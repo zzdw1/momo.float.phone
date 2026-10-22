@@ -295,6 +295,10 @@
   user-select: none;
   -webkit-touch-callout: none;
 }
+/* 仅桌面态外扩吃掉壳的 12px 内边距：图标/组件的投影原本渗入内边距区、
+   在工作区 overflow 裁剪边上被生硬截断，形成一条纵向"背景接缝"。外扩后
+   裁剪边与屏幕边重合，阴影自然淡出；网格列仍按屏幕居中，位置不变。
+   App 打开时（.app-open）必须保持原始宽度，否则所有 App 页面会被拓宽。 */
 .phone-workspace:not(.app-open) {
   margin-inline: -12px;
 }
@@ -312,10 +316,13 @@
   flex-direction: row;
   width: 100%;
   will-change: transform;
+  /* Single source of truth: --swipe-page (React) = current page; --swipe-drag
+     (set imperatively while the finger is down) = live offset. */
   transform: translate3d(calc(-100% * var(--swipe-page, 0) + var(--swipe-drag, 0px)), 0, 0);
   transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
+/* While dragging we want 1:1 finger tracking, so suppress the settle transition. */
 .phone-swipe-layer.phone-swipe-dragging {
   transition: none;
 }
@@ -326,6 +333,8 @@
   flex: 0 0 100%;
   width: 100%;
   -webkit-touch-callout: none;
+  /* 窄视口（系统显示大小调大，CSS 视口 330~370px）下格子收缩；
+     视口 ≥374px 算出值 ≥66 被钳回 66px——正常手机零变化。dock 用同一公式保持上下对齐。 */
   --slot-size: clamp(56px, calc((100vw - 108px) / 4), 66px);
   --slot-gap-x: 20px;
   --slot-gap-y: var(--home-row-gap-y);
@@ -344,10 +353,14 @@
   padding: 0 0 var(--home-grid-bottom-trim);
 }
 
+/* 三种网格模式统一使用 --home-grid-bottom-trim：此前这里硬编码 1px，
+   把变量在首页/组件页架空，导致底部留白只对纯图标翻页生效。 */
 .icon-grid-page1 {
   padding-bottom: var(--home-grid-bottom-trim);
 }
 
+
+/* Explicit grid mode (used when widgets present) */
 .icon-grid-explicit {
   padding-bottom: var(--home-grid-bottom-trim);
 }
@@ -383,6 +396,7 @@
   height: calc(var(--slot-icon-height) + (2 * var(--slot-row-step)));
 }
 
+/* 扩展的大型网格公式 */
 .icon-grid .widget-1x1 {
   width: var(--slot-icon-width);
   height: var(--slot-icon-height);
@@ -447,6 +461,7 @@
   padding: 0;
   cursor: pointer;
   box-shadow: none;
+  /* grid-row/grid-column 不可过渡（让位平滑由 JS FLIP 实现） */
   transition: transform 0.4s cubic-bezier(0.25, 1.25, 0.3, 1), opacity 0.3s ease;
 }
 
@@ -458,6 +473,7 @@
 }
 
 .icon-glyph-box {
+  /* 跟随格子收缩（无 --slot-size 上下文时回退 58px 原值） */
   width: min(58px, var(--slot-size, 58px));
   height: min(58px, var(--slot-size, 58px));
   border-radius: 16px;
@@ -470,6 +486,8 @@
   box-shadow: none;
 }
 
+/* Base Effects overrides for icon-glyph-box */
+/* 立体打光整体减淡：斜光层次保留，各层高光强度降约四成，凸面感变弱 */
 .phone-shell[data-icon-effect="glass"] .icon-glyph-box {
   background:
     linear-gradient(135deg,
@@ -531,6 +549,7 @@
 }
 
 .phone-shell[data-icon-effect="transparent"] .icon-glyph-box {
+  /** background-color: transparent !important; */
   box-shadow: none !important;
 }
 
@@ -547,6 +566,7 @@
   background-size: cover;
   background-position: center;
 }
+
 
 .icon-glyph {
   width: 28px;
@@ -596,9 +616,12 @@
   text-overflow: ellipsis;
 }
 
+/* ── Edit mode (long-press drag) ── */
+
 .edit-mode .icon-item {
   animation: jiggle 0.22s ease-in-out infinite;
 }
+/* FLIP 让位动画进行中暂停抖动——CSS animation 的 transform 会覆盖行内 FLIP 位移 */
 .edit-mode .icon-item[data-flip-active] {
   animation: none;
 }
@@ -615,9 +638,12 @@
   opacity: 0.25;
   animation: none;
 }
+/* 编辑态下 DIY code 组件的 iframe 放弃指针事件：否则按在 iframe 上的
+   pointerdown 进不了宿主的拖拽处理，组件拖不动 */
 .edit-mode .widget-glass iframe {
   pointer-events: none;
 }
+/* Dock icons jiggle & drag just like grid icons in edit mode. */
 .dock.edit-mode .dock-item {
   animation: jiggle 0.22s ease-in-out infinite;
 }
@@ -638,6 +664,7 @@
 }
 
 .icon-grid .widget-glass {
+  /* grid-row/grid-column 不可过渡（让位平滑由 JS FLIP 实现） */
   transition: transform 0.4s cubic-bezier(0.25, 1.25, 0.3, 1), opacity 0.3s ease;
 }
 
@@ -665,6 +692,7 @@
 
 .drop-indicator {
   border-radius: 14px;
+  /* 弱化存在感：去填充、细实线、低透明度 */
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.22);
   pointer-events: none;
@@ -789,6 +817,8 @@
 /* ── Dock ── */
 
 .dock {
+  /* 宽度随图标数量自适应：只有 3 个时 dock 就窄一格，不再留空位。
+     --dock-count 由 JS 按当前 dock 图标数注入（缺省 4，保证首帧/SSR 观感不变）。 */
   --dock-count: 4;
   --slot-size: clamp(56px, calc((100vw - 108px) / 4), 66px);
   --slot-gap-x: 20px;
@@ -796,10 +826,14 @@
   margin-bottom: var(--home-dock-lift);
   margin-inline: auto;
   width: min(calc((var(--dock-count) * var(--slot-size)) + ((var(--dock-count) - 1) * var(--slot-gap-x)) + 30px), calc(100% - 8px));
+  /* 默认圆角：9999px(全胶囊)显得太圆，收到 32px 圆角矩形；主题仍可用 --dock-radius 覆盖 */
   border-radius: var(--dock-radius, 32px);
   border: var(--dock-border, none);
   background: var(--c-home-glass);
+  /* 底板高度：图标(58px)在此高度内垂直居中，上下留白 = (高度-58)/2。
+     78→92 让上下各约 10px 增至约 17px，不再挤。可由主题 --dock-height 覆盖。 */
   min-height: var(--dock-height, 92px);
+  /* 上下 0 内边距 + 网格居中：图标在胶囊内几何对称（旧值 10px/5px 造成图标偏下） */
   padding: 0;
   display: grid;
   grid-template-columns: repeat(var(--dock-count), var(--slot-size));
@@ -824,6 +858,7 @@
   -webkit-backdrop-filter: blur(calc(var(--ui-blur-heavy) + 0.01px)) saturate(var(--ui-saturate));
 }
 
+/* 立体打光整体减淡：与图标同步降约四成 */
 .phone-shell[data-icon-effect="glass"] .dock:not([data-skinned]) {
   background:
     linear-gradient(135deg,
@@ -932,6 +967,8 @@
   height: 28px;
 }
 
+/* ── App pane (placeholder, empty) ── */
+
 .phone-app-pane {
   margin-top: 4px;
   flex: 1 1 auto;
@@ -945,6 +982,8 @@
   overflow: hidden;
   box-shadow: none;
 }
+
+/* ── App open state ── */
 
 .phone-workspace.app-open {
   margin-top: 0;
@@ -973,7 +1012,11 @@
 .phone-shell.app-open-shell .phone-wallpaper {
   opacity: 0 !important;
   transition-duration: 0s !important;
+  /* hide instantly so it doesn't bleed through transparent app during fade-in */
 }
+
+
+/* ── Notice toast ── */
 
 .phone-shell-notice {
   position: absolute;
@@ -994,13 +1037,19 @@
   pointer-events: none;
 }
 
+/* ── Standalone page (characters etc.) ── */
+
 .page-frame {
   width: min(980px, 94vw);
   margin: 0 auto;
   padding: 20px 0 36px;
 }
 
-@media (max-width: 373px) and (hover: none) and (pointer: coarse) {
+/* 更窄视口（≤373px）：按 390px 设计稿整体等比缩放（格 66→16.92vw、
+   距 20→5.13vw、图标 58→14.87vw、dock 354→90.77vw），窄屏呈现与正常
+   手机完全相同的比例观感，无多余留白；网格/dock 同源，天然对齐。
+   ≥374px 不受影响。 */
+@media (max-width: 373px) {
   .icon-grid,
   .dock {
     --slot-size: 16.92vw;
@@ -1013,6 +1062,7 @@
     height: 14.87vw;
   }
   .dock {
+    /* 同样按数量自适应；count=4 时等于原 90.77vw。 */
     width: min(calc((var(--dock-count) * var(--slot-size)) + ((var(--dock-count) - 1) * var(--slot-gap-x)) + 30px), calc(100% - 8px));
   }
   .dock .dock-glyph-box {
@@ -1021,7 +1071,14 @@
   }
 }
 
-@media (max-width: 500px) and (hover: none) and (pointer: coarse) {
+/* ── Mobile responsive ── */
+
+@media (max-width: 500px) {
+
+  /* 用户在设置里显式开启「显示系统状态栏」且运行时不在全屏时，控制器才会挂
+     data-pwa-display-mode 标记（见 pwa-manifest-injector）：此时所有 App 共用系统
+     安全区，不再重复预留 48px 虚拟状态栏。未开启开关的用户（含 iOS 装机用户，
+     iOS 永远报 standalone）不受影响，保持沉浸外观。 */
   html[data-pwa-display-mode="standalone"] .phone-shell,
   html[data-pwa-display-mode="minimal-ui"] .phone-shell,
   html[data-pwa-display-mode="browser"] .phone-shell {
@@ -1078,6 +1135,11 @@
     margin-inline: 0;
     gap: 0;
     transform-origin: top left;
+    /* 状态栏占位上移：部分安卓浏览器不允许网页绘制到真实状态栏，视口从状态栏下方开始；
+       而缩放仍按完整屏高算，844 设计稿被拉成整屏高、却只能从状态栏下方画起，底部被切。
+       用负上边距把整块画面上移 --status-bar-drop 像素：顶部那段（虚拟状态栏区域）超出
+       .app-root 被裁掉，底部栏随之顶回可视区。上移量可在「状态栏」弹窗里按设备调节，
+       让它约等于真实状态栏高度即可铺满。0 = 不上移（iOS 等能全屏的浏览器保持 0）。 */
     margin-top: calc(-1 * var(--status-bar-drop, 0px));
     transform: translate3d(0, calc(-1 * var(--mobile-keyboard-lift, 0px)), 0);
     transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
@@ -1135,6 +1197,10 @@
   padding-bottom: calc(var(--safe-area-bottom, 0px) + 28px);
 }
 
+/* ══════════════════════════════════════════
+   Global Visual Overrides (Shadows & Borders)
+   ══════════════════════════════════════════ */
+/* 扁平态图标阴影：强度由变量控制 */
 .phone-shell:not([data-icon-effect="glass"]) .icon-glyph-box {
   box-shadow: 0 4px 12px rgb(0 0 0 / calc(0.08 * var(--desktop-shadow-strength, 0)));
 }
@@ -1143,6 +1209,11 @@
   border: var(--desktop-outline-width, 1.5px) solid var(--desktop-outline-color, var(--user-border-color, #000)) !important;
 }
 
+/* ── 桌面文件夹 ──────────────────────────────────────── */
+/* tile 底板复用 .icon-glyph-box：扁平/毛玻璃、底色、阴影全部跟随
+   个性化装扮里的图标材质设定，文件夹永远和图标一个质感。 */
+
+/* 迷你格铺在玻璃打光层(z1)之上、描边(z3)之下；2×2 最多 4 个，够大够认 */
 .folder-mini-grid {
   position: absolute;
   inset: 15%;
@@ -1163,6 +1234,10 @@
   background: color-mix(in srgb, var(--c-desktop-icon-box, #ffffff) 46%, transparent);
 }
 
+/* 毛玻璃态：迷你格用与大图标同源的打光配方（斜向高光 + 底色透出 + 内描边）。
+   不用真 backdrop-filter——嵌在已有 backdrop-filter 的玻璃盒里采样不可靠，
+   而且每个文件夹 4 个迷你格的实时模糊太贵；身后本来就是 tile 模糊好的壁纸，
+   叠上高光就是"霜上加霜"的效果。 */
 .phone-shell[data-icon-effect="glass"] .folder-mini {
   background:
     linear-gradient(135deg,
@@ -1188,6 +1263,7 @@
   color: var(--c-desktop-icon, #2f343b);
 }
 
+/* 拖拽悬停：即将合并成组的目标高亮（松手入组） */
 .icon-item.merge-target .icon-glyph-box {
   transform: scale(1.16);
   box-shadow:
@@ -1196,13 +1272,14 @@
   transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.18s ease;
 }
 .edit-mode .icon-item.merge-target {
-  animation: none;
+  animation: none; /* 高亮时停一下抖动，目标更醒目 */
 }
 
+/* ── 文件夹展开面板 ── */
 .folder-overlay {
   position: absolute;
   inset: 0;
-  z-index: 700;
+  z-index: 700; /* 盖过 dock(300)/page-controls(400)，低于 drag-ghost(9999) */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1242,9 +1319,15 @@
 }
 
 .folder-panel {
+  /* 四边等距的账（以图标"盒"边缘计，标签算在留白里，和 iOS 一致）：
+     侧距 = (212 - 2×58) / 3 = 32；上距 = padding-top 32；
+     下距 = 行内标签区 26 + padding-bottom 6 = 32。改尺寸要一起改。 */
   width: min(212px, 78%);
   border-radius: 30px;
   padding: 0;
+  /* 扁平材质：面板底色直接用图标底色本身——文件夹是"放大的图标盒"，
+     材质与颜色都跟图标走（不再垫组件卡面 --c-home-card，那是组件的颜色）；
+     图标底色半透明时配 backdrop 模糊，透出的壁纸和图标盒同一种朦胧 */
   background: var(--c-desktop-icon-box, #ffffff);
   backdrop-filter: blur(22px);
   -webkit-backdrop-filter: blur(22px);
@@ -1253,6 +1336,7 @@
   overflow: hidden;
 }
 
+/* 面板即图标盒：成员标题用图标主色，与图标盒的对比关系天然成立 */
 .phone-shell[data-icon-effect="flat"] .folder-app .icon-label {
   color: var(--c-desktop-icon, #2f343b);
 }
@@ -1262,6 +1346,7 @@
   to { opacity: 1; transform: scale(1); }
 }
 
+/* 毛玻璃材质：配方与 icon-glyph-box 的 glass 效果同源（渐变打光 + 透出底色 + 高光描边） */
 .phone-shell[data-icon-effect="glass"] .folder-panel {
   background:
     linear-gradient(135deg,
@@ -1313,6 +1398,7 @@
   flex: 0 0 100%;
   scroll-snap-align: center;
   display: grid;
+  /* 列宽定死为图标宽，space-evenly 让左边距=列间距=右边距，四向留白统一 */
   grid-template-columns: repeat(2, 58px);
   grid-template-rows: repeat(2, minmax(84px, auto));
   justify-content: space-evenly;
@@ -1340,7 +1426,10 @@
   transform: scale(0.92);
   transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-
+/* 面板里的图标盒尺寸固定，不吃桌面 --slot-size 收缩。
+   另外补一层"座位"底色：桌面上玻璃盒靠 backdrop 模糊壁纸显形、扁平盒
+   底色 token 默认近乎全透明，进了面板身后是均匀的面板底，两种材质都
+   会隐形成"光杆图标"。座位用文字色低透明度调出，深浅主题都有对比。 */
 .folder-app .icon-glyph-box {
   width: 58px;
   height: 58px;
@@ -1363,6 +1452,7 @@
   color: var(--c-home-label, #2f343b);
 }
 
+/* 圆点浮在下边距里，不撑高面板——有没有第二页四向留白都一致 */
 .folder-dots {
   position: absolute;
   left: 0;
@@ -1472,6 +1562,7 @@
     margin-top: 0 !important;
   }
 
+  /* 彻底消除宿主外层 main.app-root 的 24px/40px 纵向内边距引起的外层页面拖拽 */
   :global(html),
   :global(body),
   html,
